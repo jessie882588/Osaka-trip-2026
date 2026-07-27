@@ -275,6 +275,18 @@
             <button @click="closeModal" class="grid h-9 w-9 place-items-center rounded-full bg-slate-100">✕</button>
           </div>
 
+
+          <form v-if="modal.type==='day'" @submit.prevent="saveDay" class="space-y-4">
+            <label class="block text-sm font-bold">日期
+              <input v-model="form.date" type="date" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3">
+            </label>
+            <label class="block text-sm font-bold">當天標題
+              <input v-model.trim="form.title" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="例如：京都一日遊">
+            </label>
+            <p class="rounded-2xl bg-skysoft/70 p-3 text-xs leading-5 text-slate-600">日期可以自由選擇，不一定要接續上一天。</p>
+            <button class="w-full rounded-2xl bg-ink px-4 py-3 font-bold text-white">新增這一天</button>
+          </form>
+
           <form v-if="modal.type==='itinerary'" @submit.prevent="saveItinerary" class="space-y-4">
             <label class="block text-sm font-bold">時間<input v-model="form.time" type="time" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
             <label class="block text-sm font-bold">景點／行程名稱<input v-model.trim="form.name" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="例如：大阪城"></label>
@@ -431,10 +443,26 @@ createApp({
     toTwd(amount, currency) { return Number(amount||0) * (currency === 'JPY' ? 0.19 : 1); },
     addDay() {
       const no = this.days.length + 1;
-      let date = this.settings.startDate;
-      if (date) { const d=new Date(date+'T00:00:00'); d.setDate(d.getDate()+no-1); date=d.toISOString().slice(0,10); }
-      const day={id:uid(),dayNo:no,date,title:`第 ${no} 天`,items:[]};
-      this.days.push(day); this.selectedDayId=day.id; this.persist();
+      let date = '';
+      const datedDays = this.days.filter(d=>d.date).sort((a,b)=>a.date.localeCompare(b.date));
+      const baseDate = datedDays.length ? datedDays[datedDays.length-1].date : this.settings.startDate;
+      if (baseDate) {
+        const d = new Date(baseDate + 'T00:00:00');
+        d.setDate(d.getDate() + (datedDays.length ? 1 : no - 1));
+        date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      }
+      this.form = { date, title:`第 ${no} 天` };
+      this.modal = { show:true, type:'day', title:'新增一天' };
+      this.$nextTick(()=>window.lucide?.createIcons());
+    },
+    saveDay() {
+      const no = this.days.length + 1;
+      const day = { id:uid(), dayNo:no, date:this.form.date, title:this.form.title || `第 ${no} 天`, items:[] };
+      this.days.push(day);
+      this.selectedDayId = day.id;
+      this.persist();
+      this.loadWeather();
+      this.closeModal();
     },
     toggleDone(item) { item.done=!item.done; this.persist(); },
     moveItem(item, direction) {
