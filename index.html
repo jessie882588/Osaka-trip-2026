@@ -10,24 +10,23 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            ink: '#3f4a52',
-            mist: '#f8fbfd',
-            skysoft: '#e5f2f8',
-            skydeep: '#78a9b8',
-            sand: '#f7eef3',
-            sage: '#e5f3f0',
-            rosewash: '#f9e8ef'
+            ink: '#20303c',
+            mist: '#f6f8fb',
+            skysoft: '#dcecf7',
+            skydeep: '#78a9c4',
+            sand: '#f4eee6',
+            sage: '#dfeae2',
+            rosewash: '#f4e4e2'
           },
           boxShadow: {
-            soft: '0 18px 50px rgba(83, 105, 117, 0.10)',
-            card: '0 10px 28px rgba(97, 119, 130, 0.09)'
+            soft: '0 14px 40px rgba(38, 62, 78, 0.08)',
+            card: '0 8px 24px rgba(38, 62, 78, 0.07)'
           }
         }
       }
@@ -35,14 +34,14 @@
   </script>
 
   <style>
-    html { background: #eef5f8; }
+    html { background: #eef2f5; }
     body {
       margin: 0;
-      color: #3f4a52;
+      color: #20303c;
       background:
-        radial-gradient(circle at 8% 0%, rgba(220,240,248,.92), transparent 38%),
-        radial-gradient(circle at 96% 16%, rgba(250,229,239,.86), transparent 34%),
-        linear-gradient(180deg, #f8fcfd 0%, #f7f5f8 100%);
+        radial-gradient(circle at 10% 0%, rgba(220,236,247,.85), transparent 38%),
+        radial-gradient(circle at 95% 18%, rgba(244,238,230,.8), transparent 32%),
+        #f6f8fb;
       -webkit-tap-highlight-color: transparent;
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Noto Sans TC", "Segoe UI", sans-serif;
     }
@@ -56,24 +55,20 @@
     input, select, textarea { outline: none; }
     .fade-enter-active, .fade-leave-active { transition: opacity .18s ease; }
     .fade-enter-from, .fade-leave-to { opacity: 0; }
-    .app-icon { width: 21px; height: 21px; stroke-width: 1.8; }
-    .nav-icon { width: 22px; height: 22px; stroke-width: 1.8; }
-    .soft-card { background: rgba(255,255,255,.82); border: 1px solid rgba(255,255,255,.92); }
-    .pastel-panel { background: linear-gradient(135deg, rgba(226,244,247,.96), rgba(250,237,244,.78)); }
   </style>
 </head>
 <body>
 <div id="app" v-cloak class="min-h-screen">
-  <main class="mx-auto min-h-screen max-w-md bg-white/62 shadow-soft sm:my-5 sm:min-h-[calc(100vh-2.5rem)] sm:rounded-[32px] sm:border sm:border-white/80 overflow-hidden">
+  <main class="mx-auto min-h-screen max-w-md bg-white/55 shadow-soft sm:my-5 sm:min-h-[calc(100vh-2.5rem)] sm:rounded-[32px] sm:border sm:border-white/80 overflow-hidden">
     <header class="safe-top px-5 pb-3">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <p class="text-xs font-semibold tracking-[.2em] text-skydeep">MY TRAVEL JOURNAL</p>
+          <p class="text-xs font-semibold tracking-[.2em] text-skydeep">TRIP PLANNER</p>
           <h1 class="mt-1 text-2xl font-bold tracking-tight">{{ settings.tripName }}</h1>
           <p class="mt-1 text-sm text-slate-500">{{ settings.startDate || '設定旅行日期' }} · {{ settings.city || '設定城市' }}</p>
         </div>
-        <button @click="openSettings" class="grid h-11 w-11 place-items-center rounded-2xl bg-white/90 shadow-card border border-white" aria-label="設定">
-          <i data-lucide="sliders-horizontal" class="app-icon text-skydeep"></i>
+        <button @click="openSettings" class="grid h-11 w-11 place-items-center rounded-2xl bg-white shadow-card border border-white" aria-label="設定">
+          ⚙️
         </button>
       </div>
     </header>
@@ -87,7 +82,7 @@
             :key="day.id"
             @click="selectedDayId = day.id"
             class="shrink-0 rounded-2xl px-4 py-3 text-left transition"
-            :class="selectedDayId === day.id ? 'bg-gradient-to-br from-[#b8dce4] to-[#efdce7] text-ink shadow-card border border-white' : 'bg-white/85 text-slate-500 border border-white'"
+            :class="selectedDayId === day.id ? 'bg-ink text-white shadow-card' : 'bg-white text-slate-500 border border-slate-100'"
           >
             <span class="block text-[11px] font-semibold">DAY {{ day.dayNo }}</span>
             <span class="mt-1 block text-sm font-bold">{{ shortDate(day.date) }}</span>
@@ -96,7 +91,7 @@
         </div>
 
         <div v-if="selectedDay" class="space-y-4">
-          <section class="rounded-[26px] pastel-panel p-5 shadow-card border border-white">
+          <section class="rounded-[26px] bg-gradient-to-br from-skysoft to-white p-5 shadow-card border border-white">
             <div class="flex items-start justify-between">
               <div>
                 <p class="text-xs font-semibold text-skydeep">今日天氣</p>
@@ -115,13 +110,13 @@
             </div>
           </section>
 
-          <section class="rounded-[26px] soft-card p-4 shadow-card">
+          <section class="rounded-[26px] bg-white p-4 shadow-card border border-slate-100">
             <div class="mb-3 flex items-center justify-between px-1">
               <div>
                 <h3 class="font-bold">行程安排</h3>
                 <p class="text-xs text-slate-400">點擊卡片即可修改</p>
               </div>
-              <button @click="openItineraryEditor()" class="rounded-xl bg-skydeep px-3 py-2 text-xs font-bold text-white">＋ 行程</button>
+              <button @click="openItineraryEditor()" class="rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">＋ 行程</button>
             </div>
 
             <div v-if="selectedDay.items.length" class="space-y-3">
@@ -163,7 +158,7 @@
 
       <!-- 地圖 -->
       <div v-show="activeTab === 'map'" class="space-y-4">
-        <section class="rounded-[26px] soft-card p-4 shadow-card">
+        <section class="rounded-[26px] bg-white p-4 shadow-card border border-slate-100">
           <div class="mb-3 flex items-center justify-between">
             <div>
               <h2 class="font-bold">景點地圖</h2>
@@ -173,7 +168,7 @@
           </div>
           <div id="map" class="h-[420px] overflow-hidden rounded-2xl bg-slate-100"></div>
         </section>
-        <section class="rounded-[26px] soft-card p-4 shadow-card">
+        <section class="rounded-[26px] bg-white p-4 shadow-card border border-slate-100">
           <h3 class="font-bold">導航說明</h3>
           <p class="mt-2 text-sm leading-6 text-slate-500">點擊任一行程的「Google Maps 導航」，會直接開啟 Google Maps 並以目前位置作為起點。地圖頁採用 OpenStreetMap 顯示行程位置，不需要 API 金鑰。</p>
         </section>
@@ -181,23 +176,22 @@
 
       <!-- 記帳 -->
       <div v-show="activeTab === 'expense'" class="space-y-4">
-        <section class="rounded-[26px] pastel-panel p-5 text-ink shadow-card border border-white">
+        <section class="rounded-[26px] bg-ink p-5 text-white shadow-card">
           <div class="flex items-start justify-between">
             <div>
-              <p class="text-xs text-slate-500">旅行總支出</p>
+              <p class="text-xs text-white/60">旅行總支出</p>
               <p class="mt-1 text-3xl font-bold">NT$ {{ money(totalExpense) }}</p>
-              <p class="mt-1 text-xs text-slate-500">日幣支出依 ¥1 ≈ NT$0.19 換算</p>
             </div>
-            <button @click="openExpenseEditor()" class="rounded-xl bg-skydeep px-3 py-2 text-xs font-bold text-white">＋ 記一筆</button>
+            <button @click="openExpenseEditor()" class="rounded-xl bg-white px-3 py-2 text-xs font-bold text-ink">＋ 記一筆</button>
           </div>
           <div class="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
-            <div class="rounded-2xl bg-white/65 p-3"><p class="text-slate-500">現金</p><p class="mt-1 font-bold">{{ money(expenseByPayment('現金')) }}</p></div>
-            <div class="rounded-2xl bg-white/65 p-3"><p class="text-slate-500">信用卡</p><p class="mt-1 font-bold">{{ money(expenseByPayment('信用卡')) }}</p></div>
-            <div class="rounded-2xl bg-white/65 p-3"><p class="text-slate-500">電子支付</p><p class="mt-1 font-bold">{{ money(expenseByPayment('電子支付')) }}</p></div>
+            <div class="rounded-2xl bg-white/10 p-3"><p class="text-white/55">現金</p><p class="mt-1 font-bold">{{ money(expenseByPayment('現金')) }}</p></div>
+            <div class="rounded-2xl bg-white/10 p-3"><p class="text-white/55">信用卡</p><p class="mt-1 font-bold">{{ money(expenseByPayment('信用卡')) }}</p></div>
+            <div class="rounded-2xl bg-white/10 p-3"><p class="text-white/55">電子支付</p><p class="mt-1 font-bold">{{ money(expenseByPayment('電子支付')) }}</p></div>
           </div>
         </section>
 
-        <section class="rounded-[26px] soft-card p-4 shadow-card">
+        <section class="rounded-[26px] bg-white p-4 shadow-card border border-slate-100">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="font-bold">支出明細</h3>
             <select v-model="expenseFilter" class="rounded-xl bg-slate-50 px-3 py-2 text-xs">
@@ -211,10 +205,7 @@
                 <p class="truncate text-sm font-bold">{{ expense.title }}</p>
                 <p class="mt-1 text-xs text-slate-400">{{ expense.date }} · {{ expense.payment }} · {{ expense.category }}</p>
               </div>
-              <div class="text-right">
-                <p class="font-bold">{{ expense.currency === 'JPY' ? '¥' : 'NT$ ' }}{{ money(expense.amount) }}</p>
-                <p v-if="expense.currency === 'JPY'" class="mt-1 text-[11px] text-slate-400">約 NT$ {{ money(toTwd(expense.amount, expense.currency)) }}</p>
-              </div>
+              <p class="font-bold">NT$ {{ money(expense.amount) }}</p>
             </button>
           </div>
           <div v-else class="py-10 text-center text-sm text-slate-400">尚無支出紀錄</div>
@@ -237,7 +228,7 @@
           </div>
         </section>
 
-        <section class="rounded-[26px] soft-card p-4 shadow-card">
+        <section class="rounded-[26px] bg-white p-4 shadow-card border border-slate-100">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="font-bold">購物清單</h3>
             <button @click="editBudget" class="text-xs font-bold text-skydeep">設定預算</button>
@@ -258,9 +249,9 @@
     </section>
 
     <!-- Bottom Nav -->
-    <nav class="safe-bottom glass fixed bottom-0 left-1/2 z-30 flex w-full max-w-md -translate-x-1/2 justify-around border-t border-white/70 bg-white/92 px-3 pt-2 sm:bottom-5 sm:rounded-b-[32px]">
-      <button v-for="tab in tabs" :key="tab.key" @click="switchTab(tab.key)" class="min-w-[70px] rounded-2xl px-3 py-2 text-center transition" :class="activeTab===tab.key?'bg-skysoft text-skydeep':'text-slate-400'">
-        <i :data-lucide="tab.icon" class="nav-icon mx-auto"></i><span class="mt-1 block text-[10px] font-bold">{{ tab.label }}</span>
+    <nav class="safe-bottom glass fixed bottom-0 left-1/2 z-30 flex w-full max-w-md -translate-x-1/2 justify-around border-t border-white/70 bg-white/85 px-3 pt-2 sm:bottom-5 sm:rounded-b-[32px]">
+      <button v-for="tab in tabs" :key="tab.key" @click="switchTab(tab.key)" class="min-w-[70px] rounded-2xl px-3 py-2 text-center transition" :class="activeTab===tab.key?'bg-ink text-white':'text-slate-400'">
+        <span class="block text-lg">{{ tab.icon }}</span><span class="mt-0.5 block text-[10px] font-bold">{{ tab.label }}</span>
       </button>
     </nav>
 
@@ -287,11 +278,7 @@
 
           <form v-if="modal.type==='expense'" @submit.prevent="saveExpense" class="space-y-4">
             <label class="block text-sm font-bold">項目<input v-model.trim="form.title" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="例如：午餐"></label>
-            <div class="grid grid-cols-[110px_1fr] gap-3">
-              <label class="block text-sm font-bold">幣別<select v-model="form.currency" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option value="TWD">台幣</option><option value="JPY">日幣</option></select></label>
-              <label class="block text-sm font-bold">金額<input v-model.number="form.amount" required min="0" type="number" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
-            </div>
-            <p v-if="form.currency === 'JPY' && form.amount" class="rounded-2xl bg-skysoft/70 px-4 py-3 text-sm text-slate-600">¥{{ money(form.amount) }} × 0.19 ≈ <strong>NT$ {{ money(form.amount * 0.19) }}</strong></p>
+            <label class="block text-sm font-bold">金額（NT$）<input v-model.number="form.amount" required min="0" type="number" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
             <div class="grid grid-cols-2 gap-3"><label class="block text-sm font-bold">分類<select v-model="form.category" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option>餐飲</option><option>交通</option><option>購物</option><option>住宿</option><option>票券</option><option>其他</option></select></label><label class="block text-sm font-bold">付款方式<select v-model="form.payment" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option>現金</option><option>信用卡</option><option>電子支付</option></select></label></div>
             <label class="block text-sm font-bold">日期<input v-model="form.date" type="date" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
             <label class="block text-sm font-bold">備註<textarea v-model.trim="form.note" rows="3" class="mt-2 w-full resize-none rounded-2xl bg-slate-50 px-4 py-3"></textarea></label>
@@ -333,10 +320,10 @@ createApp({
     return {
       activeTab: 'itinerary',
       tabs: [
-        { key:'itinerary', label:'行程', icon:'calendar-days' },
-        { key:'map', label:'地圖', icon:'map' },
-        { key:'expense', label:'記帳', icon:'wallet-cards' },
-        { key:'shopping', label:'購物', icon:'shopping-bag' }
+        { key:'itinerary', label:'行程', icon:'🗓️' },
+        { key:'map', label:'地圖', icon:'🗺️' },
+        { key:'expense', label:'記帳', icon:'💳' },
+        { key:'shopping', label:'購物', icon:'🛍️' }
       ],
       settings: { tripName:'我的旅行', city:'大阪', startDate:'2026-08-19', lat:34.6937, lng:135.5023 },
       days: [
@@ -360,7 +347,7 @@ createApp({
   computed: {
     selectedDay() { return this.days.find(d => d.id === this.selectedDayId) || this.days[0]; },
     sortedItems() { return this.selectedDay ? [...this.selectedDay.items].sort((a,b)=>(a.order||0)-(b.order||0)) : []; },
-    totalExpense() { return this.expenses.reduce((s,e)=>s+this.toTwd(e.amount, e.currency),0); },
+    totalExpense() { return this.expenses.reduce((s,e)=>s+Number(e.amount||0),0); },
     filteredExpenses() { return this.expenseFilter === '全部' ? this.expenses : this.expenses.filter(e=>e.category===this.expenseFilter); },
     purchasedTotal() { return this.shoppingItems.filter(i=>i.bought).reduce((s,i)=>s+Number(i.price||0),0); },
     shoppingProgress() { return this.shoppingBudget ? Math.min(100, Math.round(this.purchasedTotal/this.shoppingBudget*100)) : 0; }
@@ -372,7 +359,6 @@ createApp({
     this.restore();
     if (!this.selectedDayId && this.days.length) this.selectedDayId = this.days[0].id;
     this.loadWeather();
-    this.$nextTick(()=>window.lucide?.createIcons());
   },
   methods: {
     persist() {
@@ -389,15 +375,13 @@ createApp({
     },
     switchTab(tab) {
       this.activeTab = tab;
-      this.$nextTick(()=>window.lucide?.createIcons());
       if (tab === 'map') this.$nextTick(()=>setTimeout(this.renderMap,80));
     },
     shortDate(date) { if(!date) return '未設定'; const d=new Date(date+'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; },
     formatDate(date) { if(!date) return ''; return new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(date+'T00:00:00')); },
     money(n) { return new Intl.NumberFormat('zh-TW',{maximumFractionDigits:0}).format(Number(n||0)); },
     categoryIcon(c) { return ({餐飲:'🍜',交通:'🚆',購物:'🛍️',住宿:'🏨',票券:'🎫',其他:'🧾'})[c] || '🧾'; },
-    expenseByPayment(p) { return this.expenses.filter(e=>e.payment===p).reduce((s,e)=>s+this.toTwd(e.amount, e.currency),0); },
-    toTwd(amount, currency) { return Number(amount||0) * (currency === 'JPY' ? 0.19 : 1); },
+    expenseByPayment(p) { return this.expenses.filter(e=>e.payment===p).reduce((s,e)=>s+Number(e.amount||0),0); },
     addDay() {
       const no = this.days.length + 1;
       let date = this.settings.startDate;
@@ -418,7 +402,7 @@ createApp({
     },
     openItineraryEditor(item=null) {
       this.form = item ? JSON.parse(JSON.stringify(item)) : {id:'',time:'',name:'',category:'景點',address:'',lat:null,lng:null,duration:60,travelTime:0,transport:'步行',note:'',done:false};
-      this.modal={show:true,type:'itinerary',title:item?'修改行程':'新增行程'}; this.$nextTick(()=>window.lucide?.createIcons());
+      this.modal={show:true,type:'itinerary',title:item?'修改行程':'新增行程'};
     },
     saveItinerary() {
       if(this.form.id) Object.assign(this.selectedDay.items.find(i=>i.id===this.form.id),this.form);
@@ -427,19 +411,19 @@ createApp({
     },
     deleteItinerary() { if(!confirm('確定刪除這個行程？')) return; this.selectedDay.items=this.selectedDay.items.filter(i=>i.id!==this.form.id); this.persist(); this.closeModal(); },
     openExpenseEditor(item=null) {
-      this.form=item?{currency:'TWD',...JSON.parse(JSON.stringify(item))}:{id:'',title:'',amount:null,currency:'TWD',category:'餐飲',payment:'現金',date:new Date().toISOString().slice(0,10),note:''};
-      this.modal={show:true,type:'expense',title:item?'修改支出':'新增支出'}; this.$nextTick(()=>window.lucide?.createIcons());
+      this.form=item?JSON.parse(JSON.stringify(item)):{id:'',title:'',amount:null,category:'餐飲',payment:'現金',date:new Date().toISOString().slice(0,10),note:''};
+      this.modal={show:true,type:'expense',title:item?'修改支出':'新增支出'};
     },
     saveExpense() { if(this.form.id) Object.assign(this.expenses.find(e=>e.id===this.form.id),this.form); else this.expenses.unshift({...this.form,id:uid()}); this.persist(); this.closeModal(); },
     deleteExpense() { if(!confirm('確定刪除這筆支出？')) return; this.expenses=this.expenses.filter(e=>e.id!==this.form.id); this.persist(); this.closeModal(); },
     openShoppingEditor(item=null) {
       this.form=item?JSON.parse(JSON.stringify(item)):{id:'',name:'',category:'藥妝',price:null,store:'',note:'',bought:false};
-      this.modal={show:true,type:'shopping',title:item?'修改商品':'新增商品'}; this.$nextTick(()=>window.lucide?.createIcons());
+      this.modal={show:true,type:'shopping',title:item?'修改商品':'新增商品'};
     },
     saveShopping() { if(this.form.id) Object.assign(this.shoppingItems.find(i=>i.id===this.form.id),this.form); else this.shoppingItems.push({...this.form,id:uid()}); this.persist(); this.closeModal(); },
     deleteShopping() { if(!confirm('確定刪除這個商品？')) return; this.shoppingItems=this.shoppingItems.filter(i=>i.id!==this.form.id); this.persist(); this.closeModal(); },
     editBudget() { const v=prompt('請輸入購物預算（NT$）',this.shoppingBudget); if(v!==null&&!isNaN(v)){this.shoppingBudget=Number(v);this.persist();} },
-    openSettings() { this.form=JSON.parse(JSON.stringify(this.settings)); this.modal={show:true,type:'settings',title:'旅行設定'}; this.$nextTick(()=>window.lucide?.createIcons()); },
+    openSettings() { this.form=JSON.parse(JSON.stringify(this.settings)); this.modal={show:true,type:'settings',title:'旅行設定'}; },
     saveSettings() { this.settings={...this.form}; this.persist(); this.loadWeather(); this.closeModal(); },
     closeModal() { this.modal.show=false; },
     async loadWeather() {
