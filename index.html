@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>大阪旅行 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="bg-sky-50">
+<div id="app" class="max-w-md mx-auto min-h-screen p-4">
+  <h1 class="text-2xl font-bold text-sky-600 mb-2">🇯🇵 大阪 6天5夜</h1>
+  <div class="bg-white rounded-2xl p-4 shadow mb-4">
+    <div class="font-semibold">☀️ 天氣</div>
+    <div>請部署後串接 Open-Meteo API。</div>
+  </div>
+
+  <div class="bg-white rounded-2xl p-4 shadow mb-4">
+    <h2 class="font-bold mb-2">✈️ 行程</h2>
+    <div v-for="day in itinerary" class="mb-3">
+      <div class="font-semibold">{{day.title}}</div>
+      <div v-for="item in day.items" class="flex justify-between py-1">
+        <span>{{item}}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl p-4 shadow mb-4">
+    <h2 class="font-bold mb-2">💰 記帳</h2>
+    <div class="grid gap-2">
+      <input v-model="name" placeholder="項目" class="border rounded p-2">
+      <input v-model.number="amount" type="number" placeholder="JPY" class="border rounded p-2">
+      <select v-model="pay" class="border rounded p-2">
+        <option>現金</option>
+        <option>信用卡</option>
+      </select>
+      <button @click="add" class="bg-sky-400 text-white rounded p-2">新增</button>
+    </div>
+    <div class="mt-3" v-for="e in expenses">
+      {{e.name}} - ¥{{e.amount}} (NT${{(e.amount*0.19).toFixed(0)}})｜{{e.pay}}
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl p-4 shadow">
+    <h2 class="font-bold mb-2">🛍️ 購物清單</h2>
+    <div class="flex gap-2">
+      <input v-model="newItem" class="border rounded p-2 flex-1" placeholder="新增">
+      <button @click="shopping.push({text:newItem,done:false});newItem=''" class="bg-sky-400 text-white rounded px-4">+</button>
+    </div>
+    <label v-for="s in shopping" class="block mt-2">
+      <input type="checkbox" v-model="s.done"> <span :class="{'line-through text-gray-400':s.done}">{{s.text}}</span>
+    </label>
+  </div>
+</div>
+
+<script>
+const {createApp}=Vue;
+createApp({
+data(){
+return{
+name:'',amount:null,pay:'現金',newItem:'',
+expenses:[],
+shopping:[],
+itinerary:[
+{title:'Day1 08/19',items:['黑門市場','難波八阪神社','通天閣']},
+{title:'Day2 08/20',items:['USJ']},
+{title:'Day3 08/21',items:['伏見稻荷','清水寺','錦市場','金閣寺']},
+{title:'Day4 08/22',items:['伊根舟屋','天橋立','美山']},
+{title:'Day5 08/23',items:['勝尾寺','梅田']},
+{title:'Day6 08/24',items:['關西機場','返台']}
+]
+}
+},
+methods:{
+add(){
+if(!this.name||!this.amount)return;
+this.expenses.push({name:this.name,amount:this.amount,pay:this.pay});
+this.name='';this.amount=null;
+}
+}
+}).mount('#app');
+</script>
+</body>
+</html>
