@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -166,12 +167,15 @@
           </section>
 
           <section class="rounded-[26px] soft-card p-4 shadow-card">
-            <div class="mb-3 flex items-center justify-between px-1">
+            <div class="mb-3 flex items-center justify-between gap-3 px-1">
               <div>
                 <h3 class="font-bold">行程安排</h3>
                 <p class="text-xs text-slate-400">點擊卡片即可修改</p>
               </div>
-              <button @click="openItineraryEditor()" class="rounded-xl bg-gradient-to-r from-[#72aeb0] to-[#d99ab2] px-3 py-2 text-xs font-bold text-white">＋ 行程</button>
+              <div class="flex shrink-0 gap-2">
+                <button @click="openImportItinerary" class="rounded-xl bg-[#fff0f5] px-3 py-2 text-xs font-bold text-[#ad7089]">⇩ 匯入</button>
+                <button @click="openItineraryEditor()" class="rounded-xl bg-gradient-to-r from-[#72aeb0] to-[#d99ab2] px-3 py-2 text-xs font-bold text-white">＋ 行程</button>
+              </div>
             </div>
 
             <div v-if="selectedDay.items.length" class="relative">
@@ -392,6 +396,59 @@
             <div class="flex gap-3"><button v-if="form.id" type="button" @click="deleteItinerary" class="rounded-2xl bg-rosewash px-4 py-3 font-bold text-red-600">刪除</button><button class="flex-1 rounded-2xl bg-ink px-4 py-3 font-bold text-white">儲存行程</button></div>
           </form>
 
+          <div v-if="modal.type==='importItinerary'" class="space-y-4">
+            <div class="rounded-2xl bg-gradient-to-br from-[#edf8fa] to-[#fff0f6] p-4 text-xs leading-6 text-slate-600">
+              可匯入 Excel、CSV，或直接貼上文字。匯入後會自動建立日期、時間線、分類與 Emoji。地址沒有填寫時，會先用行程名稱作為 Google Maps 搜尋字詞。
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block text-sm font-bold">匯入方式
+                <select v-model="importForm.source" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3">
+                  <option value="text">貼上文字</option>
+                  <option value="file">Excel／CSV</option>
+                </select>
+              </label>
+              <label class="block text-sm font-bold">處理方式
+                <select v-model="importForm.mode" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3">
+                  <option value="append">加入原有行程</option>
+                  <option value="replace">取代全部行程</option>
+                </select>
+              </label>
+            </div>
+
+            <template v-if="importForm.source==='text'">
+              <label class="block text-sm font-bold">貼上行程
+                <textarea v-model="importForm.text" rows="12" class="mt-2 w-full resize-none rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6" placeholder="範例：
+Day 1｜2026/08/19
+10:10 ✈️ 抵達關西機場｜Kansai International Airport
+13:30 🍣 黑門市場｜大阪黑門市場｜午餐
+
+Day 2｜2026/08/20
+08:00 🎢 USJ"></textarea>
+              </label>
+              <p class="text-xs leading-5 text-slate-400">支援 Day 1、DAY1、第一天、日期，以及「時間 Emoji 行程｜地址｜備註」。時間、Emoji、地址和備註都可省略。</p>
+            </template>
+
+            <template v-else>
+              <label class="block cursor-pointer rounded-2xl border border-dashed border-[#d9a8bc] bg-[#fff7fa] px-4 py-6 text-center">
+                <span class="block text-2xl">📄</span>
+                <span class="mt-2 block text-sm font-bold text-[#a66f86]">選擇 Excel 或 CSV</span>
+                <span class="mt-1 block text-xs text-slate-400">.xlsx、.xls、.csv</span>
+                <input type="file" accept=".xlsx,.xls,.csv,text/csv" class="hidden" @change="handleItineraryFile">
+              </label>
+              <div v-if="importForm.fileName" class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">已選擇：{{ importForm.fileName }}</div>
+              <div class="rounded-2xl bg-slate-50 p-4 text-xs leading-6 text-slate-500">
+                建議欄位：日期、時間、Emoji、分類、行程、地址、備註。至少要有「行程」欄位；欄位順序不限。
+              </div>
+            </template>
+
+            <div v-if="importForm.preview" class="rounded-2xl bg-[#eef8f7] px-4 py-3 text-sm leading-6 text-[#527f7d]">{{ importForm.preview }}</div>
+            <div class="flex gap-3">
+              <button type="button" @click="downloadItineraryTemplate" class="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold">下載 CSV 範本</button>
+              <button type="button" @click="runItineraryImport" class="flex-1 rounded-2xl bg-gradient-to-r from-[#77afb3] to-[#d99ab2] px-4 py-3 font-bold text-white">開始匯入</button>
+            </div>
+          </div>
+
           <form v-if="modal.type==='expense'" @submit.prevent="saveExpense" class="space-y-4">
             <label class="block text-sm font-bold">項目<input v-model.trim="form.title" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="例如：午餐"></label>
             <div class="grid grid-cols-[110px_1fr] gap-3">
@@ -484,6 +541,7 @@ createApp({
       shoppingItems: [],
       modal: { show:false, type:'', title:'' },
       form: {},
+      importForm: { source:'text', mode:'append', text:'', rows:[], fileName:'', preview:'' },
       weather: { loading:false, status:'idle', temp:null, apparent:null, rain:null, text:'', icon:'☀️', message:'正在準備天氣資料…' },
       flightMessage: '',
       map: null,
@@ -598,6 +656,136 @@ createApp({
       this.flightMessage='已開啟即時航班搜尋。查到登機口後，按「修改」填入即可；實際資訊仍以機場與航空公司公告為準。';
       this.persist();
       window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`,'_blank','noopener');
+    },
+    openImportItinerary() {
+      this.importForm={source:'text',mode:'append',text:'',rows:[],fileName:'',preview:''};
+      this.modal={show:true,type:'importItinerary',title:'匯入行程'};
+      this.$nextTick(()=>window.lucide?.createIcons());
+    },
+    async handleItineraryFile(event) {
+      const file=event.target.files?.[0];
+      event.target.value='';
+      if(!file) return;
+      this.importForm.fileName=file.name;
+      this.importForm.preview='讀取檔案中…';
+      try {
+        const ext=file.name.split('.').pop().toLowerCase();
+        if(ext==='csv') {
+          const text=await file.text();
+          this.importForm.rows=this.parseCsvRows(text);
+        } else {
+          if(!window.XLSX) throw new Error('Excel 元件尚未載入，請確認網路連線');
+          const buffer=await file.arrayBuffer();
+          const workbook=XLSX.read(buffer,{type:'array',cellDates:true});
+          const sheet=workbook.Sheets[workbook.SheetNames[0]];
+          this.importForm.rows=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false,dateNF:'yyyy-mm-dd'});
+        }
+        this.importForm.preview=`已讀取 ${this.importForm.rows.length} 筆資料，按「開始匯入」即可。`;
+      } catch(e) {
+        console.error(e); this.importForm.rows=[]; this.importForm.preview='檔案讀取失敗：'+(e.message||'請確認格式');
+      }
+    },
+    parseCsvRows(text) {
+      const rows=[]; let row=[], field='', quoted=false;
+      const src=String(text||'').replace(/^\uFEFF/,'');
+      for(let i=0;i<src.length;i++) {
+        const ch=src[i];
+        if(ch==='"') {
+          if(quoted && src[i+1]==='"') { field+='"'; i++; } else quoted=!quoted;
+        } else if(ch===',' && !quoted) { row.push(field); field=''; }
+        else if((ch==='\n'||ch==='\r') && !quoted) {
+          if(ch==='\r' && src[i+1]==='\n') i++;
+          row.push(field); field=''; if(row.some(v=>String(v).trim())) rows.push(row); row=[];
+        } else field+=ch;
+      }
+      row.push(field); if(row.some(v=>String(v).trim())) rows.push(row);
+      if(rows.length<2) return [];
+      const headers=rows[0].map(h=>String(h).trim());
+      return rows.slice(1).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??''])));
+    },
+    normalizeImportRow(row) {
+      const get=(names)=>{
+        const key=Object.keys(row).find(k=>names.some(n=>String(k).trim().toLowerCase()===n.toLowerCase()));
+        return key!=null ? String(row[key]??'').trim() : '';
+      };
+      const name=get(['行程','名稱','景點','景點／行程名稱','景點/行程名稱','name','title','itinerary']);
+      if(!name) return null;
+      const date=this.normalizeDate(get(['日期','date','day date']));
+      const time=this.normalizeTime(get(['時間','time']));
+      const category=get(['分類','類別','category']) || this.inferItineraryMeta(name).category;
+      const emoji=get(['emoji','圖示','行程圖示']) || this.inferItineraryMeta(name).emoji;
+      return {date,time,name,emoji,category,address:get(['地址','地點','address','location'])||name,note:get(['備註','說明','note','notes']),duration:Number(get(['停留時間','停留分鐘','duration']))||60,travelTime:Number(get(['移動時間','移動分鐘','travel time']))||0,transport:get(['交通方式','交通','transport'])||'步行'};
+    },
+    normalizeDate(value) {
+      const v=String(value||'').trim(); if(!v) return '';
+      const m=v.match(/(20\d{2})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})/);
+      if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+      const d=new Date(v);
+      return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    },
+    normalizeTime(value) {
+      const v=String(value||'').trim(); if(!v) return '';
+      const m=v.match(/(\d{1,2})[:：](\d{2})/); return m ? `${m[1].padStart(2,'0')}:${m[2]}` : '';
+    },
+    inferItineraryMeta(name) {
+      const n=String(name||'').toLowerCase();
+      if(/機場|航班|flight|airport|br\d|jx\d|ci\d/.test(n)) return {category:'交通',emoji:'✈️'};
+      if(/飯店|酒店|旅館|民宿|住宿|check.?in|hotel|hostel/.test(n)) return {category:'住宿',emoji:'🏨'};
+      if(/餐|市場|咖啡|牛舌|拉麵|壽司|燒肉|美食|早餐|午餐|晚餐|restaurant|cafe/.test(n)) return {category:'餐飲',emoji:'🍜'};
+      if(/購物|百貨|商場|藥妝|outlet|shopping|mall|store/.test(n)) return {category:'購物',emoji:'🛍️'};
+      if(/usj|環球|樂園|迪士尼|theme park/.test(n)) return {category:'景點',emoji:'🎢'};
+      if(/神社|寺|城|公園|展望|景點|竹林|塔|museum|park|shrine|temple/.test(n)) return {category:'景點',emoji:'⛩️'};
+      if(/車站|電車|地鐵|巴士|接送|抵達|出發|haruka|station|train|bus/.test(n)) return {category:'交通',emoji:'🚆'};
+      return {category:'景點',emoji:'📸'};
+    },
+    parseItineraryText(text) {
+      const lines=String(text||'').split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
+      const rows=[]; let currentDate='', dayIndex=0;
+      lines.forEach(line=>{
+        let m=line.match(/^(?:day\s*|第)?(\d+)\s*(?:天)?(?:\s*[｜|\-–—:]\s*)?(.*)$/i);
+        if(m && (/^day/i.test(line)||/^第/.test(line))) {
+          dayIndex=Number(m[1]); const dm=(m[2]||'').match(/20\d{2}[\/\-.年]\d{1,2}[\/\-.月]\d{1,2}/);
+          if(dm) currentDate=this.normalizeDate(dm[0]);
+          else if(this.settings.startDate) { const d=new Date(this.settings.startDate+'T00:00:00'); d.setDate(d.getDate()+dayIndex-1); currentDate=this.normalizeDate(d.toISOString().slice(0,10)); }
+          return;
+        }
+        const dateOnly=line.match(/^(20\d{2}[\/\-.年]\d{1,2}[\/\-.月]\d{1,2})$/);
+        if(dateOnly) { currentDate=this.normalizeDate(dateOnly[1]); return; }
+        const parts=line.split(/\s*[｜|]\s*/);
+        let first=parts.shift()||''; let time='';
+        const tm=first.match(/^(\d{1,2}[:：]\d{2})\s*/);
+        if(tm) { time=this.normalizeTime(tm[1]); first=first.slice(tm[0].length).trim(); }
+        const emojiMatch=first.match(/^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)\s*/u);
+        let emoji=''; if(emojiMatch){emoji=emojiMatch[1]; first=first.slice(emojiMatch[0].length).trim();}
+        if(!first) return;
+        const meta=this.inferItineraryMeta(first);
+        rows.push({date:currentDate,time,name:first,emoji:emoji||meta.emoji,category:meta.category,address:(parts[0]||first).trim(),note:(parts.slice(1).join('｜')||'').trim(),duration:60,travelTime:0,transport:'步行'});
+      });
+      return rows;
+    },
+    runItineraryImport() {
+      let rows=[];
+      if(this.importForm.source==='text') rows=this.parseItineraryText(this.importForm.text);
+      else rows=(this.importForm.rows||[]).map(r=>this.normalizeImportRow(r)).filter(Boolean);
+      if(!rows.length) { alert('沒有讀到可匯入的行程，請確認至少有行程名稱。'); return; }
+      if(this.importForm.mode==='replace' && !confirm('這會刪除目前所有行程，確定繼續？')) return;
+      const fallback=this.selectedDay?.date || this.settings.startDate || new Date().toISOString().slice(0,10);
+      rows.forEach(r=>{ if(!r.date) r.date=fallback; });
+      const grouped=new Map(); rows.forEach(r=>{ if(!grouped.has(r.date)) grouped.set(r.date,[]); grouped.get(r.date).push(r); });
+      if(this.importForm.mode==='replace') this.days=[];
+      [...grouped.entries()].sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,items])=>{
+        let day=this.days.find(d=>d.date===date);
+        if(!day) { day={id:uid(),dayNo:this.days.length+1,date,title:`第 ${this.days.length+1} 天`,flight:null,items:[]}; this.days.push(day); }
+        items.forEach(r=>day.items.push({id:uid(),time:r.time,name:r.name,emoji:r.emoji,category:r.category,address:r.address,duration:r.duration,travelTime:r.travelTime,transport:r.transport,note:r.note,done:false,order:day.items.length}));
+      });
+      this.days.sort((a,b)=>(a.date||'').localeCompare(b.date||'')); this.days.forEach((d,i)=>d.dayNo=i+1);
+      this.selectedDayId=this.days[0]?.id||null; this.persist(); this.closeModal();
+      alert(`匯入完成：${grouped.size} 天，共 ${rows.length} 筆行程。`);
+    },
+    downloadItineraryTemplate() {
+      const csv='日期,時間,Emoji,分類,行程,地址,備註\n2026/08/19,10:10,✈️,交通,抵達關西機場,Kansai International Airport,領取行李\n2026/08/19,13:30,🍣,餐飲,黑門市場,Kuromon Ichiba Market,午餐';
+      const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download='行程匯入範本.csv'; a.click(); URL.revokeObjectURL(a.href);
     },
     openItineraryEditor(item=null) {
       this.form = item ? JSON.parse(JSON.stringify(item)) : {id:'',time:'',name:'',emoji:'📸',category:'景點',address:'',duration:60,travelTime:0,transport:'步行',note:'',done:false};
