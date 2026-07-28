@@ -89,19 +89,6 @@
     <section class="px-4 pb-28">
       <!-- 基本資訊 -->
       <div v-show="activeTab === 'basic'" class="space-y-4">
-        <div class="flex gap-2 overflow-x-auto hide-scrollbar py-1">
-          <button
-            v-for="day in days"
-            :key="'basic-'+day.id"
-            @click="selectedDayId = day.id"
-            class="shrink-0 rounded-2xl px-4 py-3 text-left transition"
-            :class="selectedDayId === day.id ? 'bg-gradient-to-br from-[#b9e0e4] to-[#f2cbdc] text-ink shadow-card border border-white' : 'bg-white/85 text-slate-500 border border-white'"
-          >
-            <span class="block text-[11px] font-semibold">DAY {{ day.dayNo }}</span>
-            <span class="mt-1 block text-sm font-bold">{{ shortDate(day.date) }}</span>
-          </button>
-        </div>
-
         <div v-if="selectedDay" class="space-y-4">
           <section class="rounded-[26px] bg-gradient-to-br from-[#eef7fb] via-[#fff9fc] to-[#f7e4ed] p-5 shadow-card border border-white">
             <div class="flex items-start justify-between gap-3">
@@ -181,29 +168,48 @@
             <div class="h-full rounded-full bg-gradient-to-r from-[#8dbac5] to-[#e0a7bd] transition-all" :style="{width: checklistProgress + '%'}"></div>
           </div>
 
-          <div class="space-y-4">
-            <section v-for="category in travelChecklist" :key="category.id" class="overflow-hidden rounded-[22px] border border-white bg-gradient-to-br from-white to-[#fff8fb] shadow-sm">
-              <div class="flex items-center justify-between gap-3 border-b border-[#f5e8ee] px-4 py-3">
-                <button @click="category.open=!category.open; persist()" class="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <div class="mb-4 space-y-3">
+            <div class="relative">
+              <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i>
+              <input v-model.trim="checklistSearch" type="search" placeholder="搜尋旅行清單" class="w-full rounded-2xl border border-white bg-white/80 py-3 pl-10 pr-4 text-sm shadow-sm" />
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button @click="setAllChecklistOpen(true)" class="rounded-xl bg-[#edf7f8] px-3 py-2 text-xs font-bold text-skydeep">全部展開</button>
+              <button @click="setAllChecklistOpen(false)" class="rounded-xl bg-[#fff0f5] px-3 py-2 text-xs font-bold text-[#ad7089]">全部收合</button>
+              <label class="ml-auto flex items-center gap-2 rounded-xl bg-white/75 px-3 py-2 text-xs text-slate-500">
+                <input v-model="checklistSortDone" type="checkbox" class="accent-[#d89ab2]" /> 已完成排下面
+              </label>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <section v-for="category in filteredChecklistCategories" :key="category.id" class="overflow-hidden rounded-[22px] border border-white bg-gradient-to-br from-white to-[#fff8fb] shadow-sm">
+              <div class="flex items-center justify-between gap-3 px-4 py-3">
+                <button @click="toggleChecklistCategory(category)" class="flex min-w-0 flex-1 items-center gap-2 text-left">
+                  <span class="grid h-7 w-7 place-items-center rounded-full bg-[#f8edf2] text-xs text-[#aa738b]">{{ (category.open !== false || checklistSearch) ? '⌄' : '›' }}</span>
                   <span class="text-lg">{{ category.emoji || '🧳' }}</span>
                   <span class="truncate text-sm font-bold">{{ category.name }}</span>
-                  <span class="rounded-full bg-[#f8e8ef] px-2 py-1 text-[10px] text-[#a86f87]">{{ category.items.filter(i=>i.done).length }}/{{ category.items.length }}</span>
+                  <span class="ml-auto rounded-full bg-[#f8e8ef] px-2 py-1 text-[10px] text-[#a86f87]">{{ category.items.filter(i=>i.done).length }}/{{ category.items.length }}</span>
                 </button>
                 <div class="flex items-center gap-1">
-                  <button @click="openChecklistItemEditor(category.id)" class="grid h-8 w-8 place-items-center rounded-full bg-[#edf7f8] text-skydeep">＋</button>
-                  <button @click="openChecklistCategoryEditor(category)" class="grid h-8 w-8 place-items-center rounded-full bg-[#fff0f5] text-[#ad7089]">•••</button>
+                  <button @click.stop="openChecklistItemEditor(category.id)" class="grid h-8 w-8 place-items-center rounded-full bg-[#edf7f8] text-skydeep">＋</button>
+                  <button @click.stop="openChecklistCategoryEditor(category)" class="grid h-8 w-8 place-items-center rounded-full bg-[#fff0f5] text-[#ad7089]">•••</button>
                 </div>
               </div>
-              <div v-show="category.open !== false" class="divide-y divide-[#f8edf2]">
-                <article v-for="item in category.items" :key="item.id" class="flex items-center gap-3 px-4 py-3">
+              <div class="mx-4 mb-3 h-1.5 overflow-hidden rounded-full bg-[#f5edf1]">
+                <div class="h-full rounded-full bg-gradient-to-r from-[#9ec9d1] to-[#dfa6bc]" :style="{width: category.items.length ? (category.items.filter(i=>i.done).length/category.items.length*100)+'%' : '0%'}"></div>
+              </div>
+              <div v-show="category.open !== false || checklistSearch" class="divide-y divide-[#f8edf2] border-t border-[#f5e8ee]">
+                <article v-for="item in filteredChecklistItems(category)" :key="item.id" class="flex items-center gap-3 px-4 py-3">
                   <button @click="item.done=!item.done; persist()" class="grid h-7 w-7 shrink-0 place-items-center rounded-full border transition" :class="item.done?'border-[#d89ab2] bg-[#d89ab2] text-white':'border-[#d8dfe2] bg-white'">{{ item.done ? '✓' : '' }}</button>
                   <button @click="openChecklistItemEditor(category.id,item)" class="min-w-0 flex-1 text-left">
                     <p class="text-sm leading-6" :class="item.done?'text-slate-400 line-through':'text-ink'">{{ item.name }}</p>
                   </button>
                 </article>
-                <div v-if="!category.items.length" class="px-4 py-6 text-center text-xs text-slate-400">這個分類還沒有項目</div>
+                <div v-if="!filteredChecklistItems(category).length" class="px-4 py-6 text-center text-xs text-slate-400">沒有符合的項目</div>
               </div>
             </section>
+            <div v-if="!filteredChecklistCategories.length" class="rounded-2xl bg-white/70 px-4 py-8 text-center text-sm text-slate-400">找不到符合的清單項目</div>
           </div>
         </section>
       </div>
@@ -622,16 +628,18 @@ createApp({
       expenseFilter: '全部',
       shoppingBudget: 10000,
       shoppingItems: [],
+      checklistSearch: '',
+      checklistSortDone: false,
       travelChecklist: [
-        { id:uid(), name:"出國必備", emoji:"🛂", open:true, items:[{id:uid(),name:"證件證明系列",done:false},{id:uid(),name:"護照影本",done:false},{id:uid(),name:"身分證",done:false},{id:uid(),name:"2張2吋證件照",done:false},{id:uid(),name:"護照（有效期限要6個月以上）",done:false},{id:uid(),name:"健保卡",done:false},{id:uid(),name:"海外旅遊保險單",done:false},{id:uid(),name:"飯店住宿確認信",done:false},{id:uid(),name:"預購票券（交通票、門票等實體票、電子票或購買證明)",done:false},{id:uid(),name:"數位pcr證明",done:false},{id:uid(),name:"駕照（國際駕照、租車證明）",done:false},{id:uid(),name:"現金、外幣、信用卡",done:false}] },
-        { id:uid(), name:"化妝保養包", emoji:"💄", open:true, items:[{id:uid(),name:"化妝水",done:false},{id:uid(),name:"乳液",done:false},{id:uid(),name:"修容",done:false},{id:uid(),name:"卸妝液",done:false},{id:uid(),name:"化妝棉",done:false},{id:uid(),name:"粉底",done:false},{id:uid(),name:"刷具",done:false},{id:uid(),name:"眼線",done:false},{id:uid(),name:"睫毛膏（卸除液）",done:false},{id:uid(),name:"眉筆",done:false},{id:uid(),name:"遮瑕",done:false},{id:uid(),name:"防曬",done:false},{id:uid(),name:"唇膏",done:false},{id:uid(),name:"衛生紙濕紙巾酒精擦",done:false},{id:uid(),name:"眼影盤",done:false},{id:uid(),name:"精華液",done:false},{id:uid(),name:"口罩",done:false}] },
-        { id:uid(), name:"盥洗／配件", emoji:"🧴", open:true, items:[{id:uid(),name:"電捲棒/直髮梳",done:false},{id:uid(),name:"墨鏡",done:false},{id:uid(),name:"髮圈",done:false},{id:uid(),name:"眼鏡",done:false},{id:uid(),name:"口罩",done:false},{id:uid(),name:"大毛巾",done:false},{id:uid(),name:"洗面乳",done:false},{id:uid(),name:"壓縮毛巾",done:false},{id:uid(),name:"戒指",done:false},{id:uid(),name:"修眉刀",done:false},{id:uid(),name:"小毛巾＊2",done:false},{id:uid(),name:"飾品包",done:false},{id:uid(),name:"洗漱包",done:false},{id:uid(),name:"隱眼",done:false},{id:uid(),name:"梳子",done:false},{id:uid(),name:"隱形眼鏡藥水",done:false},{id:uid(),name:"項鍊",done:false}] },
-        { id:uid(), name:"換洗衣物", emoji:"👚", open:true, items:[{id:uid(),name:"外套",done:false},{id:uid(),name:"褲子",done:false},{id:uid(),name:"上衣",done:false},{id:uid(),name:"發熱衣",done:false},{id:uid(),name:"裙子",done:false},{id:uid(),name:"內褲",done:false},{id:uid(),name:"圍巾",done:false},{id:uid(),name:"襪子",done:false},{id:uid(),name:"內衣",done:false},{id:uid(),name:"手套",done:false}] },
-        { id:uid(), name:"鞋子", emoji:"👟", open:true, items:[{id:uid(),name:"布鞋",done:false},{id:uid(),name:"靴子",done:false},{id:uid(),name:"涼鞋",done:false},{id:uid(),name:"拖鞋",done:false},{id:uid(),name:"鞋子",done:false}] },
-        { id:uid(), name:"藥品／包", emoji:"💊", open:true, items:[{id:uid(),name:"衛生棉/褲",done:false},{id:uid(),name:"頭痛藥",done:false},{id:uid(),name:"皮膚藥",done:false},{id:uid(),name:"暈機藥",done:false},{id:uid(),name:"感冒藥",done:false},{id:uid(),name:"保健食品",done:false},{id:uid(),name:"止痛藥",done:false},{id:uid(),name:"胃藥",done:false}] },
-        { id:uid(), name:"3C系列", emoji:"🔌", open:true, items:[{id:uid(),name:"充電線 （手機、行動充、手錶）",done:false},{id:uid(),name:"拍立得、底片",done:false},{id:uid(),name:"延長線",done:false},{id:uid(),name:"行充",done:false},{id:uid(),name:"耳機",done:false},{id:uid(),name:"轉接頭",done:false}] },
-        { id:uid(), name:"其他", emoji:"☂️", open:true, items:[{id:uid(),name:"雨傘",done:false},{id:uid(),name:"行李袋",done:false}] },
-        { id:uid(), name:"需處理", emoji:"📌", open:true, items:[{id:uid(),name:"簽證",done:false},{id:uid(),name:"小寶的注意事項",done:false},{id:uid(),name:"網路",done:false}] }
+        { id:uid(), name:"出國必備", emoji:"🛂", open:false, items:[{id:uid(),name:"證件證明系列",done:false},{id:uid(),name:"護照影本",done:false},{id:uid(),name:"身分證",done:false},{id:uid(),name:"2張2吋證件照",done:false},{id:uid(),name:"護照（有效期限要6個月以上）",done:false},{id:uid(),name:"健保卡",done:false},{id:uid(),name:"海外旅遊保險單",done:false},{id:uid(),name:"飯店住宿確認信",done:false},{id:uid(),name:"預購票券（交通票、門票等實體票、電子票或購買證明)",done:false},{id:uid(),name:"數位pcr證明",done:false},{id:uid(),name:"駕照（國際駕照、租車證明）",done:false},{id:uid(),name:"現金、外幣、信用卡",done:false}] },
+        { id:uid(), name:"化妝保養包", emoji:"💄", open:false, items:[{id:uid(),name:"化妝水",done:false},{id:uid(),name:"乳液",done:false},{id:uid(),name:"修容",done:false},{id:uid(),name:"卸妝液",done:false},{id:uid(),name:"化妝棉",done:false},{id:uid(),name:"粉底",done:false},{id:uid(),name:"刷具",done:false},{id:uid(),name:"眼線",done:false},{id:uid(),name:"睫毛膏（卸除液）",done:false},{id:uid(),name:"眉筆",done:false},{id:uid(),name:"遮瑕",done:false},{id:uid(),name:"防曬",done:false},{id:uid(),name:"唇膏",done:false},{id:uid(),name:"衛生紙濕紙巾酒精擦",done:false},{id:uid(),name:"眼影盤",done:false},{id:uid(),name:"精華液",done:false},{id:uid(),name:"口罩",done:false}] },
+        { id:uid(), name:"盥洗／配件", emoji:"🧴", open:false, items:[{id:uid(),name:"電捲棒/直髮梳",done:false},{id:uid(),name:"墨鏡",done:false},{id:uid(),name:"髮圈",done:false},{id:uid(),name:"眼鏡",done:false},{id:uid(),name:"口罩",done:false},{id:uid(),name:"大毛巾",done:false},{id:uid(),name:"洗面乳",done:false},{id:uid(),name:"壓縮毛巾",done:false},{id:uid(),name:"戒指",done:false},{id:uid(),name:"修眉刀",done:false},{id:uid(),name:"小毛巾＊2",done:false},{id:uid(),name:"飾品包",done:false},{id:uid(),name:"洗漱包",done:false},{id:uid(),name:"隱眼",done:false},{id:uid(),name:"梳子",done:false},{id:uid(),name:"隱形眼鏡藥水",done:false},{id:uid(),name:"項鍊",done:false}] },
+        { id:uid(), name:"換洗衣物", emoji:"👚", open:false, items:[{id:uid(),name:"外套",done:false},{id:uid(),name:"褲子",done:false},{id:uid(),name:"上衣",done:false},{id:uid(),name:"發熱衣",done:false},{id:uid(),name:"裙子",done:false},{id:uid(),name:"內褲",done:false},{id:uid(),name:"圍巾",done:false},{id:uid(),name:"襪子",done:false},{id:uid(),name:"內衣",done:false},{id:uid(),name:"手套",done:false}] },
+        { id:uid(), name:"鞋子", emoji:"👟", open:false, items:[{id:uid(),name:"布鞋",done:false},{id:uid(),name:"靴子",done:false},{id:uid(),name:"涼鞋",done:false},{id:uid(),name:"拖鞋",done:false},{id:uid(),name:"鞋子",done:false}] },
+        { id:uid(), name:"藥品／包", emoji:"💊", open:false, items:[{id:uid(),name:"衛生棉/褲",done:false},{id:uid(),name:"頭痛藥",done:false},{id:uid(),name:"皮膚藥",done:false},{id:uid(),name:"暈機藥",done:false},{id:uid(),name:"感冒藥",done:false},{id:uid(),name:"保健食品",done:false},{id:uid(),name:"止痛藥",done:false},{id:uid(),name:"胃藥",done:false}] },
+        { id:uid(), name:"3C系列", emoji:"🔌", open:false, items:[{id:uid(),name:"充電線 （手機、行動充、手錶）",done:false},{id:uid(),name:"拍立得、底片",done:false},{id:uid(),name:"延長線",done:false},{id:uid(),name:"行充",done:false},{id:uid(),name:"耳機",done:false},{id:uid(),name:"轉接頭",done:false}] },
+        { id:uid(), name:"其他", emoji:"☂️", open:false, items:[{id:uid(),name:"雨傘",done:false},{id:uid(),name:"行李袋",done:false}] },
+        { id:uid(), name:"需處理", emoji:"📌", open:false, items:[{id:uid(),name:"簽證",done:false},{id:uid(),name:"小寶的注意事項",done:false},{id:uid(),name:"網路",done:false}] }
       ],
       modal: { show:false, type:'', title:'' },
       form: {},
@@ -651,7 +659,12 @@ createApp({
     shoppingProgress() { return this.shoppingBudget ? Math.min(100, Math.round(this.purchasedTotal/this.shoppingBudget*100)) : 0; },
     checklistTotalCount() { return this.travelChecklist.reduce((sum,c)=>sum+c.items.length,0); },
     checklistDoneCount() { return this.travelChecklist.reduce((sum,c)=>sum+c.items.filter(i=>i.done).length,0); },
-    checklistProgress() { return this.checklistTotalCount ? Math.round(this.checklistDoneCount/this.checklistTotalCount*100) : 0; }
+    checklistProgress() { return this.checklistTotalCount ? Math.round(this.checklistDoneCount/this.checklistTotalCount*100) : 0; },
+    filteredChecklistCategories() {
+      const q=this.checklistSearch.trim().toLowerCase();
+      if(!q) return this.travelChecklist;
+      return this.travelChecklist.filter(c=>c.name.toLowerCase().includes(q) || c.items.some(i=>i.name.toLowerCase().includes(q)));
+    }
   },
   watch: {
     selectedDayId() { this.flightMessage=''; this.loadWeather(); }
@@ -680,7 +693,11 @@ createApp({
         const defaultChecklist = this.travelChecklist;
         Object.assign(this, data);
         if(!Array.isArray(data.travelChecklist) || !data.travelChecklist.length) this.travelChecklist = defaultChecklist;
-        this.travelChecklist.forEach(c=>{ if(!Array.isArray(c.items)) c.items=[]; if(c.open===undefined) c.open=true; });
+        this.travelChecklist.forEach(c=>{ if(!Array.isArray(c.items)) c.items=[]; if(c.open===undefined) c.open=false; });
+        if(!localStorage.getItem('travel-checklist-folded-v1')) {
+          this.travelChecklist.forEach(c=>c.open=false);
+          localStorage.setItem('travel-checklist-folded-v1','1');
+        }
         this.days?.forEach(day=>{ if(!('flight' in day)) day.flight=null; day.items?.forEach(item=>{ if(!item.emoji) item.emoji=this.itineraryEmoji(item.category); }); });
       } catch(e) { console.warn('資料讀取失敗', e); }
     },
@@ -951,6 +968,21 @@ createApp({
     },
     removeFormImage() { this.form.image = ''; },
     deleteShopping() { if(!confirm('確定刪除這個商品？')) return; this.shoppingItems=this.shoppingItems.filter(i=>i.id!==this.form.id); this.persist(); this.closeModal(); },
+    toggleChecklistCategory(category) {
+      if(this.checklistSearch) return;
+      category.open = category.open === false;
+      this.persist();
+    },
+    setAllChecklistOpen(open) {
+      this.travelChecklist.forEach(c=>c.open=open);
+      this.persist();
+    },
+    filteredChecklistItems(category) {
+      const q=this.checklistSearch.trim().toLowerCase();
+      let items=q ? category.items.filter(i=>i.name.toLowerCase().includes(q) || category.name.toLowerCase().includes(q)) : [...category.items];
+      if(this.checklistSortDone) items.sort((a,b)=>Number(a.done)-Number(b.done));
+      return items;
+    },
     openChecklistItemEditor(categoryId,item=null) {
       this.form=item?{...JSON.parse(JSON.stringify(item)),categoryId}:{id:'',name:'',done:false,categoryId};
       this.modal={show:true,type:'checklistItem',title:item?'修改清單項目':'新增清單項目'};
@@ -972,7 +1004,7 @@ createApp({
     },
     saveChecklistCategory() {
       if(this.form.id) Object.assign(this.travelChecklist.find(c=>c.id===this.form.id),{name:this.form.name,emoji:this.form.emoji||'🧳'});
-      else this.travelChecklist.push({id:uid(),name:this.form.name,emoji:this.form.emoji||'🧳',open:true,items:[]});
+      else this.travelChecklist.push({id:uid(),name:this.form.name,emoji:this.form.emoji||'🧳',open:false,items:[]});
       this.persist(); this.closeModal();
     },
     deleteChecklistCategory() {
