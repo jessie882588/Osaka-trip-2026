@@ -105,12 +105,13 @@
               </div>
               <div class="text-right">
                 <div v-if="weather.loading" class="text-sm text-slate-500">讀取中…</div>
-                <template v-else-if="weather.temp !== null">
+                <template v-else-if="weather.status === 'ready'">
                   <div class="text-3xl">{{ weather.icon }}</div>
                   <div class="text-lg font-bold">{{ weather.temp }}°</div>
                   <div class="text-xs text-slate-500">{{ weather.text }}</div>
+                  <div class="mt-1 text-[11px] text-slate-500">體感 {{ weather.apparent }}° · 降雨 {{ weather.rain }}%</div>
                 </template>
-                <button v-else @click="loadWeather" class="rounded-xl bg-white/70 px-3 py-2 text-xs font-bold text-skydeep">取得天氣</button>
+                <div v-else class="max-w-[150px] rounded-xl bg-white/65 px-3 py-2 text-left text-[11px] leading-5 text-slate-500">{{ weather.message }}</div>
               </div>
             </div>
           </section>
@@ -167,7 +168,7 @@
           <div class="mb-3 flex items-center justify-between">
             <div>
               <h2 class="font-bold">景點地圖</h2>
-              <p class="text-xs text-slate-400">顯示有填寫座標的行程</p>
+              <p class="text-xs text-slate-400">依行程地址自動定位</p>
             </div>
             <button @click="fitMap" class="rounded-xl bg-skysoft px-3 py-2 text-xs font-bold">顯示全部</button>
           </div>
@@ -292,7 +293,7 @@
             <label class="block text-sm font-bold">景點／行程名稱<input v-model.trim="form.name" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="例如：大阪城"></label>
             <label class="block text-sm font-bold">分類<select v-model="form.category" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option>景點</option><option>餐飲</option><option>購物</option><option>住宿</option><option>交通</option><option>其他</option></select></label>
             <label class="block text-sm font-bold">地址<input v-model.trim="form.address" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="Google Maps 可搜尋的地址"></label>
-            <div class="grid grid-cols-2 gap-3"><label class="block text-sm font-bold">緯度<input v-model.number="form.lat" type="number" step="any" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="34.6937"></label><label class="block text-sm font-bold">經度<input v-model.number="form.lng" type="number" step="any" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="135.5023"></label></div>
+            <p class="rounded-2xl bg-skysoft/70 p-3 text-xs leading-5 text-slate-600">只要輸入地址或 Google Maps 可搜尋的地點名稱，儲存後即可直接按「Google Maps 導航」。</p>
             <div class="grid grid-cols-2 gap-3"><label class="block text-sm font-bold">停留時間（分）<input v-model.number="form.duration" type="number" min="0" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label><label class="block text-sm font-bold">預估移動（分）<input v-model.number="form.travelTime" type="number" min="0" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label></div>
             <label class="block text-sm font-bold">交通方式<select v-model="form.transport" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option>步行</option><option>電車</option><option>地鐵</option><option>巴士</option><option>計程車</option><option>自駕</option><option>其他</option></select></label>
             <label class="block text-sm font-bold">備註<textarea v-model.trim="form.note" rows="3" class="mt-2 w-full resize-none rounded-2xl bg-slate-50 px-4 py-3"></textarea></label>
@@ -390,7 +391,7 @@ createApp({
       shoppingItems: [],
       modal: { show:false, type:'', title:'' },
       form: {},
-      weather: { loading:false, temp:null, text:'', icon:'☀️' },
+      weather: { loading:false, status:'idle', temp:null, apparent:null, rain:null, text:'', icon:'☀️', message:'正在準備天氣資料…' },
       map: null,
       markers: []
     }
@@ -471,17 +472,21 @@ createApp({
       [arr[idx].order,arr[target].order]=[arr[target].order,arr[idx].order]; this.persist();
     },
     openGoogleMaps(item) {
-      const dest = item.lat && item.lng ? `${item.lat},${item.lng}` : item.address || item.name;
+      const dest = item.address || item.name;
       const mode = ({步行:'walking',自駕:'driving',計程車:'driving',電車:'transit',地鐵:'transit',巴士:'transit'})[item.transport] || 'transit';
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=${mode}`,'_blank','noopener');
     },
     openItineraryEditor(item=null) {
-      this.form = item ? JSON.parse(JSON.stringify(item)) : {id:'',time:'',name:'',category:'景點',address:'',lat:null,lng:null,duration:60,travelTime:0,transport:'步行',note:'',done:false};
+      this.form = item ? JSON.parse(JSON.stringify(item)) : {id:'',time:'',name:'',category:'景點',address:'',duration:60,travelTime:0,transport:'步行',note:'',done:false};
       this.modal={show:true,type:'itinerary',title:item?'修改行程':'新增行程'}; this.$nextTick(()=>window.lucide?.createIcons());
     },
     saveItinerary() {
-      if(this.form.id) Object.assign(this.selectedDay.items.find(i=>i.id===this.form.id),this.form);
-      else this.selectedDay.items.push({...this.form,id:uid(),order:this.selectedDay.items.length});
+      const payload = {...this.form};
+      // 新增／修改行程只需要地址；不再要求或保存經緯度。
+      delete payload.lat;
+      delete payload.lng;
+      if(this.form.id) Object.assign(this.selectedDay.items.find(i=>i.id===this.form.id),payload);
+      else this.selectedDay.items.push({...payload,id:uid(),order:this.selectedDay.items.length});
       this.persist(); this.closeModal();
     },
     deleteItinerary() { if(!confirm('確定刪除這個行程？')) return; this.selectedDay.items=this.selectedDay.items.filter(i=>i.id!==this.form.id); this.persist(); this.closeModal(); },
@@ -540,14 +545,52 @@ createApp({
     saveSettings() { this.settings={...this.form}; this.persist(); this.loadWeather(); this.closeModal(); },
     closeModal() { this.modal.show=false; },
     async loadWeather() {
-      if(!this.settings.lat || !this.settings.lng || !this.selectedDay?.date) return;
-      this.weather.loading=true;
+      const date = this.selectedDay?.date;
+      if(!date) {
+        this.weather={loading:false,status:'unavailable',temp:null,apparent:null,rain:null,text:'',icon:'☀️',message:'請先設定這一天的日期'};
+        return;
+      }
+      if(!this.settings.lat || !this.settings.lng) {
+        this.weather={loading:false,status:'unavailable',temp:null,apparent:null,rain:null,text:'',icon:'☀️',message:'請先在旅行設定填寫城市座標'};
+        return;
+      }
+      const today = new Date(); today.setHours(0,0,0,0);
+      const target = new Date(date+'T00:00:00');
+      const diffDays = Math.round((target-today)/86400000);
+      if(diffDays > 16) {
+        this.weather={loading:false,status:'unavailable',temp:null,apparent:null,rain:null,text:'',icon:'🗓️',message:`尚未開放預報，約在出發前 16 天自動顯示`};
+        return;
+      }
+      if(diffDays < -5) {
+        this.weather={loading:false,status:'unavailable',temp:null,apparent:null,rain:null,text:'',icon:'🗓️',message:'此日期已超出即時預報範圍'};
+        return;
+      }
+      this.weather={...this.weather,loading:true,status:'loading',message:'讀取中…'};
       try {
-        const url=`https://api.open-meteo.com/v1/forecast?latitude=${this.settings.lat}&longitude=${this.settings.lng}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${this.selectedDay.date}&end_date=${this.selectedDay.date}`;
+        const url=`https://api.open-meteo.com/v1/forecast?latitude=${this.settings.lat}&longitude=${this.settings.lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max&timezone=auto&start_date=${date}&end_date=${date}`;
         const r=await fetch(url); if(!r.ok) throw new Error('weather'); const d=await r.json();
-        const code=d.daily.weather_code?.[0]; const max=d.daily.temperature_2m_max?.[0]; const min=d.daily.temperature_2m_min?.[0];
-        const w=this.weatherLabel(code); this.weather={loading:false,temp:`${Math.round(min)}–${Math.round(max)}`,text:w.text,icon:w.icon};
-      } catch(e) { this.weather={loading:false,temp:null,text:'',icon:'☀️'}; }
+        const code=d.daily?.weather_code?.[0];
+        const max=d.daily?.temperature_2m_max?.[0]; const min=d.daily?.temperature_2m_min?.[0];
+        const appMax=d.daily?.apparent_temperature_max?.[0]; const appMin=d.daily?.apparent_temperature_min?.[0];
+        const rain=d.daily?.precipitation_probability_max?.[0] ?? 0;
+        if(max == null || min == null) throw new Error('no weather data');
+        const w=this.weatherLabel(code);
+        this.weather={loading:false,status:'ready',temp:`${Math.round(min)}–${Math.round(max)}`,apparent:`${Math.round(appMin)}–${Math.round(appMax)}`,rain:Math.round(rain),text:w.text,icon:w.icon,message:''};
+      } catch(e) {
+        console.error(e);
+        this.weather={loading:false,status:'error',temp:null,apparent:null,rain:null,text:'',icon:'⚠️',message:'目前無法取得天氣，請稍後再試'};
+      }
+    },
+    async geocodeAddress(address) {
+      try {
+        const q = [address, this.settings.city].filter(Boolean).join(', ');
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
+        const r = await fetch(url, {headers:{'Accept-Language':'zh-TW,zh;q=0.9,en;q=0.7'}});
+        if(!r.ok) return null;
+        const data = await r.json();
+        if(!data.length) return null;
+        return {lat:Number(data[0].lat), lng:Number(data[0].lon)};
+      } catch(e) { console.warn('地址定位失敗', e); return null; }
     },
     weatherLabel(code) {
       if(code===0) return {text:'晴朗',icon:'☀️'};
