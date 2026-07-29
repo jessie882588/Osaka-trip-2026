@@ -8,8 +8,6 @@
 
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
@@ -56,7 +54,6 @@
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { scrollbar-width: none; }
     .glass { backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-    .leaflet-container { font-family: inherit; }
     input, select, textarea { outline: none; }
     .fade-enter-active, .fade-leave-active { transition: opacity .18s ease; }
     .fade-enter-from, .fade-leave-to { opacity: 0; }
@@ -290,40 +287,28 @@
         </div>
       </div>
 
-      <!-- 地圖 -->
-      <div v-show="activeTab === 'map'" class="space-y-4">
-        <section class="rounded-[26px] soft-card p-4 shadow-card">
-          <div class="mb-3 flex items-center justify-between">
-            <div>
-              <h2 class="font-bold">景點地圖</h2>
-              <p class="text-xs text-slate-400">依行程地址自動定位</p>
-            </div>
-            <button @click="fitMap" class="rounded-xl bg-skysoft px-3 py-2 text-xs font-bold">顯示全部</button>
-          </div>
-          <div id="map" class="h-[420px] overflow-hidden rounded-2xl bg-slate-100"></div>
-        </section>
-        <section class="rounded-[26px] soft-card p-4 shadow-card">
-          <h3 class="font-bold">導航說明</h3>
-          <p class="mt-2 text-sm leading-6 text-slate-500">點擊任一行程的「Google Maps 導航」，會直接開啟 Google Maps 並以目前位置作為起點。地圖頁採用 OpenStreetMap 顯示行程位置，不需要 API 金鑰。</p>
-        </section>
-      </div>
-
       <!-- 記帳 -->
       <div v-show="activeTab === 'expense'" class="space-y-4">
         <section class="rounded-[26px] pastel-panel p-5 text-ink shadow-card border border-white">
-          <div class="flex items-start justify-between">
+          <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-xs text-slate-500">旅行總支出</p>
-              <p class="mt-1 text-3xl font-bold">NT$ {{ money(totalExpense) }}</p>
+              <p class="text-xs text-slate-500">今日花費 · {{ todayDateLabel }}</p>
+              <p class="mt-1 text-3xl font-bold">NT$ {{ money(todayExpenseTotal) }}</p>
               <p class="mt-1 text-xs text-slate-500">日幣支出依 ¥1 ≈ NT$0.19 換算</p>
             </div>
-            <button @click="openExpenseEditor()" class="rounded-xl bg-skydeep px-3 py-2 text-xs font-bold text-white">＋ 記一筆</button>
+            <button @click="openExpenseEditor()" class="shrink-0 rounded-xl bg-skydeep px-3 py-2 text-xs font-bold text-white">＋ 記一筆</button>
           </div>
-          <div class="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
-            <div class="rounded-2xl bg-white/65 p-3"><p class="text-slate-500">現金</p><p class="mt-1 font-bold">{{ money(expenseByPayment('現金')) }}</p></div>
-            <div class="rounded-2xl bg-white/65 p-3"><p class="text-slate-500">信用卡</p><p class="mt-1 font-bold">{{ money(expenseByPayment('信用卡')) }}</p></div>
-            <div class="rounded-2xl bg-white/65 p-3"><p class="text-slate-500">電子支付</p><p class="mt-1 font-bold">{{ money(expenseByPayment('電子支付')) }}</p></div>
+          <div class="mt-5 grid grid-cols-2 gap-3 text-center text-xs">
+            <div class="rounded-2xl bg-white/70 p-4">
+              <p class="text-slate-500">💵 現金</p>
+              <p class="mt-1 text-base font-bold">NT$ {{ money(todayExpenseByPayment('現金')) }}</p>
+            </div>
+            <div class="rounded-2xl bg-white/70 p-4">
+              <p class="text-slate-500">💳 信用卡</p>
+              <p class="mt-1 text-base font-bold">NT$ {{ money(todayExpenseByPayment('信用卡')) }}</p>
+            </div>
           </div>
+          <p v-if="todayExpenseByPayment('電子支付')" class="mt-3 text-center text-xs text-slate-500">電子支付 NT$ {{ money(todayExpenseByPayment('電子支付')) }}</p>
         </section>
 
         <section class="rounded-[26px] soft-card p-4 shadow-card">
@@ -612,7 +597,6 @@ createApp({
       tabs: [
         { key:'basic', label:'基本', icon:'info' },
         { key:'itinerary', label:'行程', icon:'calendar-days' },
-        { key:'map', label:'地圖', icon:'map' },
         { key:'expense', label:'記帳', icon:'wallet-cards' },
         { key:'shopping', label:'購物', icon:'shopping-bag' }
       ],
@@ -646,14 +630,19 @@ createApp({
       importForm: { source:'text', mode:'append', text:'', rows:[], fileName:'', preview:'' },
       weather: { loading:false, status:'idle', temp:null, apparent:null, rain:null, text:'', icon:'☀️', message:'正在準備天氣資料…' },
       flightMessage: '',
-      map: null,
-      markers: []
     }
   },
   computed: {
     selectedDay() { return this.days.find(d => d.id === this.selectedDayId) || this.days[0]; },
     sortedItems() { return this.selectedDay ? [...this.selectedDay.items].sort((a,b)=>(a.order||0)-(b.order||0)) : []; },
     totalExpense() { return this.expenses.reduce((s,e)=>s+this.toTwd(e.amount, e.currency),0); },
+    todayDate() {
+      const d=new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    },
+    todayDateLabel() { return new Intl.DateTimeFormat('zh-TW',{month:'numeric',day:'numeric',weekday:'short'}).format(new Date()); },
+    todayExpenses() { return this.expenses.filter(e=>e.date===this.todayDate); },
+    todayExpenseTotal() { return this.todayExpenses.reduce((s,e)=>s+this.toTwd(e.amount,e.currency),0); },
     filteredExpenses() { return this.expenseFilter === '全部' ? this.expenses : this.expenses.filter(e=>e.category===this.expenseFilter); },
     purchasedTotal() { return this.shoppingItems.filter(i=>i.bought).reduce((s,i)=>s+Number(i.price||0),0); },
     shoppingProgress() { return this.shoppingBudget ? Math.min(100, Math.round(this.purchasedTotal/this.shoppingBudget*100)) : 0; },
@@ -683,7 +672,6 @@ createApp({
         alert('裝置儲存空間不足，請移除部分照片後再儲存。');
         console.error(e);
       }
-      if (this.activeTab === 'map') this.$nextTick(this.renderMap);
     },
     restore() {
       try {
@@ -704,7 +692,6 @@ createApp({
     switchTab(tab) {
       this.activeTab = tab;
       this.$nextTick(()=>window.lucide?.createIcons());
-      if (tab === 'map') this.$nextTick(()=>setTimeout(this.renderMap,80));
     },
     shortDate(date) { if(!date) return '未設定'; const d=new Date(date+'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; },
     formatDate(date) { if(!date) return ''; return new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(date+'T00:00:00')); },
@@ -712,6 +699,7 @@ createApp({
     categoryIcon(c) { return ({餐飲:'🍜',交通:'🚆',購物:'🛍️',住宿:'🏨',票券:'🎫',其他:'🧾'})[c] || '🧾'; },
     itineraryEmoji(c) { return ({景點:'📸',餐飲:'🍜',購物:'🛍️',住宿:'🏨',交通:'🚆',其他:'⭐'})[c] || '⭐'; },
     expenseByPayment(p) { return this.expenses.filter(e=>e.payment===p).reduce((s,e)=>s+this.toTwd(e.amount, e.currency),0); },
+    todayExpenseByPayment(p) { return this.todayExpenses.filter(e=>e.payment===p).reduce((s,e)=>s+this.toTwd(e.amount,e.currency),0); },
     toTwd(amount, currency) { return Number(amount||0) * (currency === 'JPY' ? 0.19 : 1); },
     addDay() {
       const no = this.days.length + 1;
@@ -1072,28 +1060,6 @@ createApp({
       if([71,73,75,77,85,86].includes(code)) return {text:'有雪',icon:'❄️'};
       if([95,96,99].includes(code)) return {text:'雷雨',icon:'⛈️'};
       return {text:'天氣變化',icon:'🌤️'};
-    },
-    renderMap() {
-      const el=document.getElementById('map'); if(!el || typeof L==='undefined') return;
-      if(!this.map) {
-        this.map=L.map(el,{zoomControl:false}).setView([this.settings.lat||34.6937,this.settings.lng||135.5023],12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(this.map);
-        L.control.zoom({position:'bottomright'}).addTo(this.map);
-      }
-      this.markers.forEach(m=>m.remove()); this.markers=[];
-      this.days.forEach(day=>day.items.forEach(item=>{
-        if(Number(item.lat)&&Number(item.lng)) {
-          const marker=L.marker([item.lat,item.lng]).addTo(this.map).bindPopup(`<b>${item.time||''} ${item.name}</b><br>${day.date}`);
-          this.markers.push(marker);
-        }
-      }));
-      this.fitMap(); setTimeout(()=>this.map.invalidateSize(),100);
-    },
-    fitMap() {
-      if(!this.map) return;
-      if(this.markers.length===1) this.map.setView(this.markers[0].getLatLng(),15);
-      else if(this.markers.length>1) this.map.fitBounds(L.featureGroup(this.markers).getBounds().pad(.18));
-      else this.map.setView([this.settings.lat||34.6937,this.settings.lng||135.5023],12);
     },
     exportData() {
       const data=localStorage.getItem(STORAGE_KEY)||'{}'; const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a');
