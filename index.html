@@ -294,7 +294,7 @@
             <div>
               <p class="text-xs text-slate-500">今日花費 · {{ todayDateLabel }}</p>
               <p class="mt-1 text-3xl font-bold">NT$ {{ money(todayExpenseTotal) }}</p>
-              <p class="mt-1 text-xs text-slate-500">日幣支出依 ¥1 ≈ NT$0.19 換算</p>
+              <p class="mt-1 text-xs text-slate-500">日幣支出依 ¥1 ≈ NT$0.20 換算</p>
             </div>
             <button @click="openExpenseEditor()" class="shrink-0 rounded-xl bg-skydeep px-3 py-2 text-xs font-bold text-white">＋ 記一筆</button>
           </div>
@@ -505,7 +505,7 @@ Day 2｜2026/08/20
               <label class="block text-sm font-bold">幣別<select v-model="form.currency" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option value="TWD">台幣</option><option value="JPY">日幣</option></select></label>
               <label class="block text-sm font-bold">金額<input v-model.number="form.amount" required min="0" type="number" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
             </div>
-            <p v-if="form.currency === 'JPY' && form.amount" class="rounded-2xl bg-skysoft/70 px-4 py-3 text-sm text-slate-600">¥{{ money(form.amount) }} × 0.19 ≈ <strong>NT$ {{ money(form.amount * 0.19) }}</strong></p>
+            <p v-if="form.currency === 'JPY' && form.amount" class="rounded-2xl bg-skysoft/70 px-4 py-3 text-sm text-slate-600">¥{{ money(form.amount) }} × 0.20 ≈ <strong>NT$ {{ money(form.amount * 0.20) }}</strong></p>
             <div class="grid grid-cols-2 gap-3"><label class="block text-sm font-bold">分類<select v-model="form.category" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option>餐飲</option><option>交通</option><option>購物</option><option>住宿</option><option>票券</option><option>其他</option></select></label><label class="block text-sm font-bold">付款方式<select v-model="form.payment" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option>現金</option><option>信用卡</option><option>電子支付</option></select></label></div>
             <label class="block text-sm font-bold">日期<input v-model="form.date" type="date" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
             <label class="block text-sm font-bold">備註<textarea v-model.trim="form.note" rows="3" class="mt-2 w-full resize-none rounded-2xl bg-slate-50 px-4 py-3"></textarea></label>
@@ -700,7 +700,7 @@ createApp({
     itineraryEmoji(c) { return ({景點:'📸',餐飲:'🍜',購物:'🛍️',住宿:'🏨',交通:'🚆',其他:'⭐'})[c] || '⭐'; },
     expenseByPayment(p) { return this.expenses.filter(e=>e.payment===p).reduce((s,e)=>s+this.toTwd(e.amount, e.currency),0); },
     todayExpenseByPayment(p) { return this.todayExpenses.filter(e=>e.payment===p).reduce((s,e)=>s+this.toTwd(e.amount,e.currency),0); },
-    toTwd(amount, currency) { return Number(amount||0) * (currency === 'JPY' ? 0.19 : 1); },
+    toTwd(amount, currency) { return Number(amount||0) * (currency === 'JPY' ? 0.20 : 1); },
     addDay() {
       const no = this.days.length + 1;
       let date = '';
