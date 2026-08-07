@@ -341,16 +341,37 @@
       <!-- 購物 -->
       <div v-show="activeTab === 'shopping'" class="space-y-4">
         <section class="rounded-[26px] bg-gradient-to-br from-sand to-white p-5 shadow-card border border-white">
-          <div class="flex items-start justify-between">
+          <div class="flex items-start justify-between gap-3">
             <div>
               <p class="text-xs text-slate-500">購物預算</p>
-              <p class="mt-1 text-2xl font-bold">NT$ {{ money(shoppingBudget) }}</p>
-              <p class="mt-1 text-xs text-slate-400">已買 NT$ {{ money(purchasedTotal) }} · 尚餘 NT$ {{ money(Math.max(0, shoppingBudget-purchasedTotal)) }}</p>
+              <p class="mt-1 text-sm font-bold text-slate-700">外幣＋台幣雙預算</p>
             </div>
-            <button @click="openShoppingEditor()" class="rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">＋ 商品</button>
+            <div class="flex gap-2">
+              <button @click="editBudget" class="rounded-xl bg-white/80 px-3 py-2 text-xs font-bold text-skydeep shadow-sm">設定預算</button>
+              <button @click="openShoppingEditor()" class="rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white">＋ 商品</button>
+            </div>
           </div>
-          <div class="mt-4 h-2 overflow-hidden rounded-full bg-white">
-            <div class="h-full rounded-full bg-ink transition-all" :style="{width: shoppingProgress + '%'}"></div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="rounded-2xl bg-white/75 p-3">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-xs text-slate-500">{{ shoppingForeign.code }} 預算</p>
+                <span class="text-[10px] text-slate-400">匯率 {{ shoppingForeign.rate }}</span>
+              </div>
+              <p class="mt-1 text-lg font-bold">{{ foreignSymbol }} {{ money(shoppingForeign.budget) }}</p>
+              <p class="mt-1 text-[11px] text-slate-400">已買 {{ foreignSymbol }} {{ money(purchasedForeignTotal) }} · 尚餘 {{ foreignSymbol }} {{ money(Math.max(0, shoppingForeign.budget-purchasedForeignTotal)) }}</p>
+              <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full bg-ink transition-all" :style="{width: shoppingForeignProgress + '%'}"></div>
+              </div>
+            </div>
+            <div class="rounded-2xl bg-white/75 p-3">
+              <p class="text-xs text-slate-500">TWD 預算</p>
+              <p class="mt-1 text-lg font-bold">NT$ {{ money(shoppingBudget) }}</p>
+              <p class="mt-1 text-[11px] text-slate-400">已買 NT$ {{ money(purchasedTotal) }} · 尚餘 NT$ {{ money(Math.max(0, shoppingBudget-purchasedTotal)) }}</p>
+              <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full bg-ink transition-all" :style="{width: shoppingProgress + '%'}"></div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -367,7 +388,10 @@
                 <p class="truncate text-sm font-bold" :class="item.bought?'line-through text-slate-400':''">{{ item.name }}</p>
                 <p class="mt-1 text-xs text-slate-400">{{ item.category }} · {{ item.store || '未指定店家' }}</p>
               </button>
-              <p class="text-sm font-bold">NT$ {{ money(item.price || 0) }}</p>
+              <div class="text-right">
+                <p class="text-sm font-bold">{{ shoppingPriceLabel(item) }}</p>
+                <p v-if="(item.currency || 'TWD') !== 'TWD'" class="text-[10px] text-slate-400">≈ NT$ {{ money(shoppingItemTwd(item)) }}</p>
+              </div>
             </article>
           </div>
           <div v-else class="py-10 text-center text-sm text-slate-400">購物清單是空的</div>
@@ -528,7 +552,9 @@ Day 2｜2026/08/20
 
           <form v-if="modal.type==='shopping'" @submit.prevent="saveShopping" class="space-y-4">
             <label class="block text-sm font-bold">商品名稱<input v-model.trim="form.name" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
-            <div class="grid grid-cols-2 gap-3"><label class="block text-sm font-bold">分類<select v-model="form.category" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option>藥妝</option><option>服飾</option><option>食品</option><option>伴手禮</option><option>家電</option><option>其他</option></select></label><label class="block text-sm font-bold">預估價格<input v-model.number="form.price" type="number" min="0" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label></div>
+            <div class="grid grid-cols-2 gap-3"><label class="block text-sm font-bold">分類<select v-model="form.category" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option>藥妝</option><option>服飾</option><option>食品</option><option>伴手禮</option><option>家電</option><option>其他</option></select></label><label class="block text-sm font-bold">幣別<select v-model="form.currency" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"><option value="TWD">TWD 台幣</option><option :value="shoppingForeign.code">{{ shoppingForeign.code }} 外幣</option></select></label></div>
+            <label class="block text-sm font-bold">預估價格<input v-model.number="form.price" type="number" min="0" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
+            <p v-if="form.currency !== 'TWD' && form.price" class="rounded-2xl bg-skysoft/70 px-4 py-3 text-sm text-slate-600">{{ foreignSymbol }} {{ money(form.price) }} × {{ shoppingForeign.rate }} ≈ <strong>NT$ {{ money(form.price * shoppingForeign.rate) }}</strong></p>
             <label class="block text-sm font-bold">店家<input v-model.trim="form.store" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3"></label>
             <label class="block text-sm font-bold">備註<textarea v-model.trim="form.note" rows="3" class="mt-2 w-full resize-none rounded-2xl bg-slate-50 px-4 py-3"></textarea></label>
             <div>
@@ -544,6 +570,19 @@ Day 2｜2026/08/20
               <p class="mt-2 text-xs text-slate-400">可直接拍照或從相簿選擇，照片會壓縮後儲存。</p>
             </div>
             <div class="flex gap-3"><button v-if="form.id" type="button" @click="deleteShopping" class="rounded-2xl bg-rosewash px-4 py-3 font-bold text-red-600">刪除</button><button class="flex-1 rounded-2xl bg-ink px-4 py-3 font-bold text-white">儲存商品</button></div>
+          </form>
+
+          <form v-if="modal.type==='shoppingBudget'" @submit.prevent="saveShoppingBudget" class="space-y-4">
+            <div class="rounded-2xl bg-skysoft/60 p-4 text-xs leading-5 text-slate-600">可同時設定外幣預算和台幣預算。商品可選用台幣或外幣記錄，系統會用你設定的匯率自動換算。</div>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block text-sm font-bold">外幣代碼<input v-model.trim="form.code" maxlength="6" required class="mt-2 w-full uppercase rounded-2xl bg-slate-50 px-4 py-3" placeholder="JPY"></label>
+              <label class="block text-sm font-bold">顯示符號<input v-model.trim="form.symbol" maxlength="4" class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="¥"></label>
+            </div>
+            <label class="block text-sm font-bold">外幣預算<input v-model.number="form.foreignBudget" type="number" min="0" step="any" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="50000"></label>
+            <label class="block text-sm font-bold">匯率 <span class="font-normal text-slate-400">（1 外幣 = 幾台幣）</span><input v-model.number="form.rate" type="number" min="0.000001" step="any" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="0.20"></label>
+            <label class="block text-sm font-bold">台幣預算<input v-model.number="form.twdBudget" type="number" min="0" step="any" required class="mt-2 w-full rounded-2xl bg-slate-50 px-4 py-3" placeholder="10000"></label>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">{{ form.code || '外幣' }} {{ money(form.foreignBudget) }} ≈ NT$ {{ money((form.foreignBudget||0) * (form.rate||0)) }}</div>
+            <button class="w-full rounded-2xl bg-ink px-4 py-3 font-bold text-white">儲存購物預算</button>
           </form>
 
           <form v-if="modal.type==='checklistItem'" @submit.prevent="saveChecklistItem" class="space-y-4">
@@ -618,6 +657,7 @@ createApp({
       expenses: [],
       expenseFilter: '全部',
       shoppingBudget: 10000,
+      shoppingForeign: { code:'JPY', symbol:'¥', budget:50000, rate:0.20 },
       shoppingItems: [],
       checklistSearch: '',
       checklistSortDone: false,
@@ -651,8 +691,11 @@ createApp({
     todayExpenses() { return this.expenses.filter(e=>e.date===this.todayDate); },
     todayExpenseTotal() { return this.todayExpenses.reduce((s,e)=>s+this.toTwd(e.amount,e.currency),0); },
     filteredExpenses() { return this.expenseFilter === '全部' ? this.expenses : this.expenses.filter(e=>e.category===this.expenseFilter); },
-    purchasedTotal() { return this.shoppingItems.filter(i=>i.bought).reduce((s,i)=>s+Number(i.price||0),0); },
+    purchasedTotal() { return this.shoppingItems.filter(i=>i.bought).reduce((s,i)=>s+this.shoppingItemTwd(i),0); },
+    purchasedForeignTotal() { return this.shoppingForeign.rate ? this.purchasedTotal / this.shoppingForeign.rate : 0; },
     shoppingProgress() { return this.shoppingBudget ? Math.min(100, Math.round(this.purchasedTotal/this.shoppingBudget*100)) : 0; },
+    shoppingForeignProgress() { return this.shoppingForeign.budget ? Math.min(100, Math.round(this.purchasedForeignTotal/this.shoppingForeign.budget*100)) : 0; },
+    foreignSymbol() { return this.shoppingForeign.symbol || this.shoppingForeign.code || ''; },
     checklistTotalCount() { return this.travelChecklist.reduce((sum,c)=>sum+c.items.length,0); },
     checklistDoneCount() { return this.travelChecklist.reduce((sum,c)=>sum+c.items.filter(i=>i.done).length,0); },
     checklistProgress() { return this.checklistTotalCount ? Math.round(this.checklistDoneCount/this.checklistTotalCount*100) : 0; },
@@ -674,7 +717,7 @@ createApp({
   methods: {
     persist() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ settings:this.settings, flights:this.flights, days:this.days, expenses:this.expenses, shoppingBudget:this.shoppingBudget, shoppingItems:this.shoppingItems, travelChecklist:this.travelChecklist }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ settings:this.settings, flights:this.flights, days:this.days, expenses:this.expenses, shoppingBudget:this.shoppingBudget, shoppingForeign:this.shoppingForeign, shoppingItems:this.shoppingItems, travelChecklist:this.travelChecklist }));
       } catch (e) {
         alert('裝置儲存空間不足，請移除部分照片後再儲存。');
         console.error(e);
@@ -693,6 +736,9 @@ createApp({
           this.travelChecklist.forEach(c=>c.open=false);
           localStorage.setItem('travel-checklist-folded-v1','1');
         }
+        if(!data.shoppingForeign) this.shoppingForeign={ code:'JPY', symbol:'¥', budget:50000, rate:0.20 };
+        this.shoppingForeign.code=(this.shoppingForeign.code||'JPY').toUpperCase();
+        this.shoppingItems?.forEach(item=>{ if(!item.currency) item.currency='TWD'; });
         if(!data.flights) {
           const oldFlights=(this.days||[]).map(d=>d.flight).filter(f=>f?.flightNumber);
           if(oldFlights[0]) this.flights.outbound={...this.flights.outbound,...oldFlights[0]};
@@ -708,6 +754,8 @@ createApp({
     shortDate(date) { if(!date) return '未設定'; const d=new Date(date+'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; },
     formatDate(date) { if(!date) return ''; return new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'}).format(new Date(date+'T00:00:00')); },
     money(n) { return new Intl.NumberFormat('zh-TW',{maximumFractionDigits:0}).format(Number(n||0)); },
+    shoppingItemTwd(item) { return Number(item?.price||0) * ((item?.currency||'TWD')==='TWD' ? 1 : Number(this.shoppingForeign.rate||0)); },
+    shoppingPriceLabel(item) { const currency=item?.currency||'TWD'; return currency==='TWD' ? `NT$ ${this.money(item?.price||0)}` : `${this.foreignSymbol} ${this.money(item?.price||0)}`; },
     categoryIcon(c) { return ({餐飲:'🍜',交通:'🚆',購物:'🛍️',住宿:'🏨',票券:'🎫',其他:'🧾'})[c] || '🧾'; },
     itineraryEmoji(c) { return ({景點:'📸',餐飲:'🍜',購物:'🛍️',住宿:'🏨',交通:'🚆',其他:'⭐'})[c] || '⭐'; },
     expenseByPayment(p) { return this.expenses.filter(e=>e.payment===p).reduce((s,e)=>s+this.toTwd(e.amount, e.currency),0); },
@@ -928,7 +976,8 @@ createApp({
     saveExpense() { if(this.form.id) Object.assign(this.expenses.find(e=>e.id===this.form.id),this.form); else this.expenses.unshift({...this.form,id:uid()}); this.persist(); this.closeModal(); },
     deleteExpense() { if(!confirm('確定刪除這筆支出？')) return; this.expenses=this.expenses.filter(e=>e.id!==this.form.id); this.persist(); this.closeModal(); },
     openShoppingEditor(item=null) {
-      this.form=item?JSON.parse(JSON.stringify(item)):{id:'',name:'',category:'藥妝',price:null,store:'',note:'',bought:false,image:''};
+      this.form=item?JSON.parse(JSON.stringify(item)):{id:'',name:'',category:'藥妝',price:null,currency:this.shoppingForeign.code,store:'',note:'',bought:false,image:''};
+      if(!this.form.currency) this.form.currency='TWD';
       this.modal={show:true,type:'shopping',title:item?'修改商品':'新增商品'}; this.$nextTick(()=>window.lucide?.createIcons());
     },
     saveShopping() { if(this.form.id) Object.assign(this.shoppingItems.find(i=>i.id===this.form.id),this.form); else this.shoppingItems.push({...this.form,id:uid()}); this.persist(); this.closeModal(); },
@@ -1015,7 +1064,20 @@ createApp({
       if(!confirm(`確定刪除「${category.name}」和裡面的所有項目？`)) return;
       this.travelChecklist=this.travelChecklist.filter(c=>c.id!==this.form.id); this.persist(); this.closeModal();
     },
-    editBudget() { const v=prompt('請輸入購物預算（NT$）',this.shoppingBudget); if(v!==null&&!isNaN(v)){this.shoppingBudget=Number(v);this.persist();} },
+    editBudget() {
+      this.form={ code:this.shoppingForeign.code, symbol:this.shoppingForeign.symbol, foreignBudget:this.shoppingForeign.budget, rate:this.shoppingForeign.rate, twdBudget:this.shoppingBudget };
+      this.modal={show:true,type:'shoppingBudget',title:'設定購物預算'};
+    },
+    saveShoppingBudget() {
+      const code=(this.form.code||'JPY').trim().toUpperCase();
+      const rate=Number(this.form.rate||0);
+      if(!code || rate<=0) return;
+      const oldCode=this.shoppingForeign.code;
+      this.shoppingForeign={ code, symbol:(this.form.symbol||code).trim(), budget:Number(this.form.foreignBudget||0), rate };
+      this.shoppingBudget=Number(this.form.twdBudget||0);
+      if(oldCode!==code) this.shoppingItems.forEach(item=>{ if(item.currency===oldCode) item.currency=code; });
+      this.persist(); this.closeModal();
+    },
     openSettings() { this.form=JSON.parse(JSON.stringify(this.settings)); this.modal={show:true,type:'settings',title:'旅行設定'}; this.$nextTick(()=>window.lucide?.createIcons()); },
     saveSettings() { this.settings={...this.form}; this.persist(); this.loadWeather(); this.closeModal(); },
     closeModal() { this.modal.show=false; },
